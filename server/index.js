@@ -1,10 +1,17 @@
-// Simple WebSocket authoritative server for City Strike prototype
-// Run: node index.js
-
+// City Strike server serving client static and WebSocket authoritative server
+const express = require('express');
+const http = require('http');
 const WebSocket = require('ws');
+const path = require('path');
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocket.Server({port:PORT});
-console.log('City Strike server listening on',PORT);
+
+const app = express();
+app.use(express.static(path.join(__dirname, '..', 'client')));
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+console.log('City Strike server starting on', PORT);
 
 let nextId = 1;
 const players = {}; // id -> {ws, x,y,z, vx,vy,vz, lastSeen}
@@ -17,7 +24,10 @@ function broadcastState(){
   }
   const s = JSON.stringify(payload);
   for(const id in players){
-    players[id].ws.send(s);
+    const ws = players[id].ws;
+    if(ws.readyState === WebSocket.OPEN){
+      try{ ws.send(s); }catch(e){ }
+    }
   }
 }
 
@@ -38,14 +48,14 @@ setInterval(()=>{ tickPhysics(); broadcastState(); }, 50); // 20Hz
 wss.on('connection',(ws,req)=>{
   // limit to 4 players
   if(Object.keys(players).length >= 4){
-    ws.send(JSON.stringify({type:'error', message:'room full (max 4)'}));
+    try{ ws.send(JSON.stringify({type:'error', message:'room full (max 4)'})); }catch(e){}
     ws.close();
     return;
   }
   const id = String(nextId++);
   players[id] = {ws,x:0,y:0,z:0,vx:0,vy:0,vz:0,lastSeen:Date.now()};
   console.log('player connected',id);
-  ws.send(JSON.stringify({type:'welcome', id}));
+  try{ ws.send(JSON.stringify({type:'welcome', id})); }catch(e){}
 
   ws.on('message',(raw)=>{
     let msg;
@@ -61,7 +71,12 @@ wss.on('connection',(ws,req)=>{
     }else if(msg.type === 'shoot'){
       // broadcast shot event
       const ev = JSON.stringify({type:'shot', from:id});
-      for(const pid in players) players[pid].ws.send(ev);
+      for(const pid in players){
+        const pws = players[pid].ws;
+        if(pws.readyState === WebSocket.OPEN){
+          try{ pws.send(ev); }catch(e){}
+        }
+      }
     }
   });
 
@@ -70,3 +85,5 @@ wss.on('connection',(ws,req)=>{
     delete players[id];
   });
 });
+
+server.listen(PORT, ()=> console.log('HTTP & WS server listening on', PORT));

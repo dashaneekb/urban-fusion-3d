@@ -1,9 +1,10 @@
 {
   "name": "city-strike-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "express": "^4.18.2",
     "ws": "^8.12.0"
   }
 }

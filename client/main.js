@@ -1,7 +1,7 @@
 // Simple static client using Three.js
 // Minimal mobile-friendly scene, player cube, and WebSocket sync client
 
-const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.hostname + ':8080';
+const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host;
 
 import * as THREE from 'https://unpkg.com/three@0.153.0/build/three.module.js';
 
